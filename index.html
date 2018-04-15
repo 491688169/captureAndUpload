@@ -1,0 +1,73 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Record</title>
+</head>
+<body>
+    <video>你的浏览器不支持播放</video>
+    <button>停止并上传</button>
+    <script src="https://cdn.webrtc-experiment.com/RecordRTC.js"></script>
+    <script src="https://webrtc.github.io/adapter/adapter-latest.js"></script>
+    <script src="https://cdn.WebRTC-Experiment.com/getScreenId.js"></script>    <script src="qiniu.min.js"></script>
+    <script src="http://code.jquery.com/jquery-2.2.4.min.js"></script>
+    <!--<script src="https://cdn.WebRTC-Experiment.com/getScreenId.js"></script>-->
+    <script>
+
+        getScreenId(function (error, sourceId, screen_constraints) {
+            // error    == null || 'permission-denied' || 'not-installed' || 'installed-disabled' || 'not-chrome'
+            // sourceId == null || 'string' || 'firefox'
+
+            navigator.getUserMedia = navigator.mozGetUserMedia || navigator.webkitGetUserMedia;
+            navigator.getUserMedia(screen_constraints, function (stream) {
+
+                // document.querySelector('video').src = URL.createObjectURL(stream);
+
+                var recorder = RecordRTC(stream, {
+                    type: 'video',
+                    mimeType: 'video/webm',
+                    previewStream: function(s) {
+                        document.querySelector('video').muted = true;
+                        setSrcObject(s, document.querySelector('video'));
+                    }
+                });
+                recorder.startRecording();
+                setTimeout(function() {
+                    recorder.stopRecording(function() {
+                        var blob = recorder.getBlob();
+                        document.querySelector('video').src = URL.createObjectURL(blob);
+                        document.querySelector('video').muted = false;
+                        upload(blob)
+                        // stream.getVideoTracks().stop();
+                        // stream.getAudioTracks().stop();
+                            });
+                        }, 5 * 1000)
+
+
+                // share this "MediaStream" object using RTCPeerConnection API
+            }, function (error) {
+                console.error(error);
+            });
+        });
+
+
+
+
+
+
+            function upload(blob) {
+            $.ajax({
+                url: 'http://learnta.cn/upload',
+                success: function(token) {
+                    token = token.uptoken
+                    console.log('token', token)
+                    var observable = qiniu.upload(blob, 'test4Stream', token)
+                    var subscription = observable.subscribe({}) // 上传开始
+
+                }
+            })
+
+        }
+    </script>
+</body>
+</html>
