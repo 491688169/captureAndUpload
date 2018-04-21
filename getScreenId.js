@@ -1,4 +1,4 @@
-// Last time updated on Oct 26, 2017
+// Last time updated on December 13, 2017
 
 // Latest file can be found here: https://cdn.webrtc-experiment.com/getScreenId.js
 
@@ -10,16 +10,16 @@
 // getScreenId.js
 
 /*
-getScreenId(function (error, sourceId, screen_constraints) {
-    // error    == null || 'permission-denied' || 'not-installed' || 'installed-disabled' || 'not-chrome'
-    // sourceId == null || 'string' || 'firefox'
+ getScreenId(function (error, sourceId, screen_constraints) {
+ // error    == null || 'permission-denied' || 'not-installed' || 'installed-disabled' || 'not-chrome'
+ // sourceId == null || 'string' || 'firefox'
 
-    if(sourceId == 'firefox') {
-        navigator.mozGetUserMedia(screen_constraints, onSuccess, onFailure);
-    }
-    else navigator.webkitGetUserMedia(screen_constraints, onSuccess, onFailure);
-});
-*/
+ if(sourceId == 'firefox') {
+ navigator.mozGetUserMedia(screen_constraints, onSuccess, onFailure);
+ }
+ else navigator.webkitGetUserMedia(screen_constraints, onSuccess, onFailure);
+ });
+ */
 
 (function() {
     window.getScreenId = function(callback) {
@@ -68,7 +68,7 @@ getScreenId(function (error, sourceId, screen_constraints) {
             audio: false,
             video: {
                 mandatory: {
-                    chromeMediaSource: error ? 'screen' : 'desktop',
+                    chromeMediaSource: 'desktop',
                     maxWidth: window.screen.width > 1920 ? window.screen.width : 1920,
                     maxHeight: window.screen.height > 1080 ? window.screen.height : 1080
                 },
@@ -105,6 +105,12 @@ getScreenId(function (error, sourceId, screen_constraints) {
     window.getScreenConstraints = function(callback) {
         loadIFrame(function() {
             getScreenId(function(error, sourceId, screen_constraints) {
+                if(!screen_constraints) {
+                    screen_constraints = {
+                        video: true
+                    };
+                }
+
                 callback(error, screen_constraints.video);
             });
         });

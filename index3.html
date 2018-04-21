@@ -1,0 +1,105 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Title</title>
+</head>
+<body>
+<script>
+    window.requestFileSystem = window.requestFileSystem || window.webkitRequestFileSystem;
+
+
+    window.requestFileSystem = window.requestFileSystem || window.webkitRequestFileSystem;
+    var fileSystemObj = {
+        fs          : null,//文件系统对象
+        size        : 52428800,//申请50M临时空间 50*1024*1024
+        errorHandler:function(e){
+            //处理各种错误
+            switch (e.name) {
+                case 'QuotaExceededError':
+                    break;
+                case 'NotFoundError':
+                    break;
+                case 'SecurityError':
+                    break;
+                case 'InvalidStateError':
+                    break;
+                case 'InvalidModificationError':
+                    break;
+                default:
+            }
+            console.log(e)
+        },
+        initialize  : function() {
+            //初始化
+            window.requestFileSystem(window.PERSISTENT, this.size, function (fs) {
+                fileSystemObj.fs = fs;
+                fs.root.getDirectory('', {}, function(entries) {
+                    for(var i = 0; i < entries.length; i++) {
+                        var entry = entries[i];
+                        if (entry.isDirectory){
+                            console.log('Directory: ' + entry.fullPath);
+                        }
+                        else if (entry.isFile){
+                            console.log('File: ' + entry.fullPath);
+                        }
+                    }
+                }, fileSystemObj.errorHandler);
+            })
+        }
+    };
+    if(window.requestFileSystem) {
+        navigator.webkitPersistentStorage.queryUsageAndQuota(function (usage, quota) {
+
+            //usage已经使用的空间，quota申请的总空间
+            if (!quota) {
+                //还没有申请过空间
+                navigator.webkitPersistentStorage.requestQuota(fileSystemObj.size, function (grantedBytes) {
+                    fileSystemObj.initialize();
+                }, fileSystemObj.errorHandler);
+            }else{
+                fileSystemObj.initialize();
+            }
+        });
+    }
+
+    function errorHandler(err){
+        var msg = 'An error occured: ';
+
+        switch (err.code) {
+            case DOMError.NOT_FOUND_ERR:
+                msg += 'File or directory not found';
+                break;
+
+            case DOMError.NOT_READABLE_ERR:
+                msg += 'File or directory not readable';
+                break;
+
+            case DOMError.PATH_EXISTS_ERR:
+                msg += 'File or directory already exists';
+                break;
+
+            case DOMError.TYPE_MISMATCH_ERR:
+                msg += 'Invalid filetype';
+                break;
+
+            default:
+                msg += 'Unknown Error';
+                break;
+        };
+
+        console.log(msg, err);
+    };
+
+    function createDir(rootDir, folders) {
+        rootDir.getDirectory(folders[0], {create: true}, function(dirEntry) {
+            if (folders.length) {
+                createDir(dirEntry, folders.slice(1));
+            }
+        }, errorHandler);
+    };
+
+
+</script>
+</body>
+</html>

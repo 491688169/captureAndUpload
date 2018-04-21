@@ -3,71 +3,127 @@
 <head>
     <meta charset="UTF-8">
     <title>Record</title>
+    <style>
+        html, body, video, canvas {
+            margin: 0!important;
+            padding: 0!important;
+            overflow: hidden!important;
+            width: 100%;
+            height: 100%;
+        }
+    </style>
 </head>
 <body>
-    <video>你的浏览器不支持播放</video>
-    <button>停止并上传</button>
+    <button id='closeBtn'>结束录制</button>
+
+    <video controls autoplay></video>
     <script src="https://cdn.webrtc-experiment.com/RecordRTC.js"></script>
     <script src="https://webrtc.github.io/adapter/adapter-latest.js"></script>
-    <script src="https://cdn.WebRTC-Experiment.com/getScreenId.js"></script>    <script src="qiniu.min.js"></script>
-    <script src="http://code.jquery.com/jquery-2.2.4.min.js"></script>
-    <!--<script src="https://cdn.WebRTC-Experiment.com/getScreenId.js"></script>-->
+    <script src="https://cdn.WebRTC-Experiment.com/getScreenId.js"></script>
+
+    <script src="streamSaver.js"></script> <!-- load before streams polyfill to detect support -->
+    <script src="https://cdn.rawgit.com/creatorrr/web-streams-polyfill/master/dist/polyfill.min.js"></script>
     <script>
+        function saveFile(recorder, mediaStream) {
+            var fr = new FileReader
+            var chunks = Promise.resolve()
+            var fileStream = streamSaver.createWriteStream('filename.mp4')
+            var writer = fileStream.getWriter()
+            var closeBtn = document.querySelector('#closeBtn')
 
-        getScreenId(function (error, sourceId, screen_constraints) {
-            // error    == null || 'permission-denied' || 'not-installed' || 'installed-disabled' || 'not-chrome'
-            // sourceId == null || 'string' || 'firefox'
 
-            navigator.getUserMedia = navigator.mozGetUserMedia || navigator.webkitGetUserMedia;
-            navigator.getUserMedia(screen_constraints, function (stream) {
+            closeBtn.onclick = event => {
+                recorder.stopRecording(function() {
+                    var blob = recorder.getBlob();
+                    document.querySelector('video').src = URL.createObjectURL(blob);
+                    document.querySelector('video').muted = false;
+                    mediaStream.getVideoTracks().forEach(function(track) {
+                        track.stop();
+                    });
+                    mediaStream.getAudioTracks().forEach(function(track) {
+                        track.stop();
+                    });
+                });
+                setTimeout(() =>
+                                chunks.then(evt => writer.close())
+                        , 1000)
+            }
 
-                // document.querySelector('video').src = URL.createObjectURL(stream);
+            recorder.ondataavailable = ({blob}) => {
+                chunks = chunks.then(() => new Promise(resolve => {
+                    fr.onload = () => {
+                        writer.write(new Uint8Array(fr.result))
+                        resolve()
+                    }
+                    fr.readAsArrayBuffer(blob)
+                }))
+            }
 
-                var recorder = RecordRTC(stream, {
+        }
+
+        function captureScreen(cb) {
+            getScreenId(function (error, sourceId, screen_constraints) {
+                navigator.mediaDevices.getUserMedia(screen_constraints).then(cb).catch(function(error) {
+                    console.error('getScreenId error', error);
+                    alert('Failed to capture your screen. Please check Chrome console logs for further information.');
+                });
+            });
+        }
+        function captureCamera(cb) {
+            navigator.mediaDevices.getUserMedia({audio: true, video: false}).then(cb);
+        }
+        function keepStreamActive(stream) {
+            var video = document.createElement('video');
+            video.muted = true;
+            setSrcObject(stream, video);
+            video.style.display = 'none';
+            (document.body || document.documentElement).appendChild(video);
+        }
+        captureScreen(function(screen) {
+            keepStreamActive(screen);
+            captureCamera(function(camera) {
+                keepStreamActive(camera);
+                screen.width = window.screen.width;
+                screen.height = window.screen.height;
+                screen.fullcanvas = true;
+
+                camera.width = 320;
+                camera.height = 240;
+                camera.top = screen.height - camera.height;
+                camera.left = screen.width - camera.width;
+
+                var recorder = new RecordRTC([screen, camera], {
                     type: 'video',
-                    mimeType: 'video/webm',
+                    mimeType: 'h264',
                     previewStream: function(s) {
                         document.querySelector('video').muted = true;
                         setSrcObject(s, document.querySelector('video'));
+
+                        saveFile(recorder, s)
                     }
                 });
+
                 recorder.startRecording();
-                setTimeout(function() {
-                    recorder.stopRecording(function() {
-                        var blob = recorder.getBlob();
-                        document.querySelector('video').src = URL.createObjectURL(blob);
-                        document.querySelector('video').muted = false;
-                        upload(blob)
-                        // stream.getVideoTracks().stop();
-                        // stream.getAudioTracks().stop();
-                            });
-                        }, 5 * 1000)
 
-
-                // share this "MediaStream" object using RTCPeerConnection API
-            }, function (error) {
-                console.error(error);
+//                setTimeout(function() {
+//                    recorder.stopRecording(function() {
+//                        var blob = recorder.getBlob();
+//                        document.querySelector('video').src = URL.createObjectURL(blob);
+//                        document.querySelector('video').muted = false;
+//                        window.open( recorder.save('test.mp4') )
+//
+//                        [screen, camera].forEach(function(stream) {
+//                            stream.getVideoTracks().forEach(function(track) {
+//                                track.stop();
+//                            });
+//                            stream.getAudioTracks().forEach(function(track) {
+//                                track.stop();
+//                            });
+//                        })
+//                    });
+//                }, 10 * 1000);
             });
         });
-
-
-
-
-
-
-            function upload(blob) {
-            $.ajax({
-                url: 'http://learnta.cn/upload',
-                success: function(token) {
-                    token = token.uptoken
-                    console.log('token', token)
-                    var observable = qiniu.upload(blob, 'test4Stream', token)
-                    var subscription = observable.subscribe({}) // 上传开始
-
-                }
-            })
-
-        }
     </script>
 </body>
 </html>
