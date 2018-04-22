@@ -10,7 +10,7 @@
 
         var fileSystemObj = {
             fs: null, //文件系统对象
-            size: 2 * 1024 * 1024 * 1024, //申请50M临时空间 50*1024*1024
+            size: 2 * 1024 * 1024 * 1024, //申请空间大小
             errorHandler: function(e) {
                 //处理各种错误
                 switch (e.name) {
@@ -33,8 +33,8 @@
                 window.requestFileSystem(window.PERSISTENT, this.size, function (fs) {
                     fileSystemObj.fs = fs
 
-                    createDir(fs.root, 'test/', function () {
-                        fs.root.getFile('/aaa/test1.txt', {create: true, exclusive: true}, function(fileEntry) {
+                    createDir(fs.root, ['learnta'], function () {
+                        fs.root.getFile('/test/test1.txt', {create: true, exclusive: true}, function(fileEntry) {
                             console.log(fileEntry) // 留意它的几个属性
                             // 生成FileWriter对象
                             fileEntry.createWriter(function(fileWriter) {
@@ -45,7 +45,7 @@
                                     console.log('写入失败: ' + e.toString())
                                 }
                                 //可以创建ArrayBuffer、Blob等对象写入文件，但不建议使用BlobBuilder弃用方法
-                                fileWriter.write(new Blob(["aaa"], {type: "text/plain"}))
+                                fileWriter.write(new Blob(['aaa'], {type: 'text/plain'}))
                             }, fileSystemObj.errorHandler)
                         }, fileSystemObj.errorHandler)
                     })
@@ -71,40 +71,14 @@
             })
         }
 
-        function errorHandler(err){
-            var msg = 'An error occured: ';
-
-            switch (err.code) {
-                case DOMError.NOT_FOUND_ERR:
-                    msg += 'File or directory not found';
-                    break;
-
-                case DOMError.NOT_READABLE_ERR:
-                    msg += 'File or directory not readable';
-                    break;
-
-                case DOMError.PATH_EXISTS_ERR:
-                    msg += 'File or directory already exists';
-                    break;
-
-                case DOMError.TYPE_MISMATCH_ERR:
-                    msg += 'Invalid filetype';
-                    break;
-
-                default:
-                    msg += 'Unknown Error';
-                    break;
-            }
-
-            console.log(msg, err);
-        }
-
         function createDir(rootDir, folders, callback) {
             rootDir.getDirectory(folders[0], {create: true}, function(dirEntry) {
                 if (folders.length) {
                     createDir(dirEntry, folders.slice(1));
                 }
-            }, errorHandler);
+                if (!callback) return
+                callback()
+            }, fileSystemObj.errorHandler);
         }
 
 
